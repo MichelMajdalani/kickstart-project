@@ -1,113 +1,116 @@
-const CampaignFactory = artifacts.require("CampaignFactory");
 const Campaign = artifacts.require("Campaign");
 
-// TODO Refactor tests using these links 'https://www.trufflesuite.com/docs/truffle/testing/writing-tests-in-javascript'
-
-contract("CampaignFactory", accounts => {
-    it("create a campaign", async () => {
-        let factory = await CampaignFactory.deployed();
-        let campaign = factory.createCampaign(web3.utils.toWei('2', 'ether'));
-        assert.exists(campaign.options.address, "Address is neither null of undefined");
-        
-    });
-});
 
 contract("Campaign", accounts => {
-    it('deploys a factory and a campaign', () => {
-        assert.ok(factory.options.address);
-        assert.ok(campaign.options.address);
-    });
+    // Start from a fresh state
+    let campaign;
+    let manager = accounts[0];
+    let minimumContribution = web3.utils.toWei('1', 'nano');
+    beforeEach(async () => {
+        campaign = await Campaign.new(minimumContribution, manager);
+    })
 
-    it('marks caller as the campaign manager', async () => {
-        const manager = await campaign.methods.manager().call();
-        assert.equal(accounts[0], manager);
+    it('marks both correct manager and contribution', async () => {
+        let owner = await campaign.manager();
+        assert.strictEqual(owner, manager, "Manager set properly");
+        let minimumContribution = await campaign.minimumContribution();
+        assert.strictEqual(minimumContribution.toString(), (web3.utils.toWei('1', 'nano')).toString(), 'Contribution set properly');
     });
-
+    
     it('allows people to contribute money and marks them as approvers', async () => {
-        await campaign.methods.contribute().send({
-        value: '200',
-        from: accounts[1]
-        });
+        // Check inital states
+        let approversCount = await campaign.approversCount();
+        assert.strictEqual(approversCount.toNumber(), 0, "No contributors at the start");
+        let isContributor = await campaign.approvers(accounts[1]);
+        assert.isFalse(isContributor, "not a contributor at the start");
 
-        const isContributor = await campaign.methods.approvers(accounts[1]).call();
-        assert(isContributor);
+        // Contribute
+        let resultTx = await campaign.contribute({ value: minimumContribution, from: accounts[1]});
+        // Test events - TODO avoid making order matter
+        assert.strictEqual(resultTx.logs[0].event, "NewContributor");
+        assert.strictEqual(resultTx.logs[1].event, "NewContribution");
+        // Updated values
+        isContributor = await campaign.approvers(accounts[1]);
+        assert.isTrue(isContributor, "marked as a contributor");
+        approversCount = await campaign.approversCount();
+        assert.strictEqual(approversCount.toNumber(), 1, 'Added contributor');
+    });
 
+    it('duplicate approvers', async () => {
+        // Contribute
+        let resultTx = await campaign.contribute({ value: minimumContribution, from: accounts[1]});
+        
+        // Test events - TODO avoid making order matter
+        assert.strictEqual(resultTx.logs[0].event, "NewContributor");
+        assert.strictEqual(resultTx.logs[1].event, "NewContribution");
+
+        let approversCount = await campaign.approversCount();
+        assert.strictEqual(approversCount.toNumber(), 1, 'Added contributor');
+
+        let resultTx2 = await campaign.contribute({ value: minimumContribution, from: accounts[1]});
+        
+        // TODO Find a more elegant way of doing this.
+        assert.notStrictEqual(resultTx2.logs[0].event, "NewContributor");
+        assert.strictEqual(resultTx2.logs[0].event, "NewContribution");
+        
+        approversCount = await campaign.approversCount();
+        assert.strictEqual(approversCount.toNumber(), 1, 'Did not count duplicate contributor');
     });
 
     it('requires minimum constribution', async () => {
         try {
-        await campaign.methods.contribute().send({
-            value: '5',
-            from: accounts[1]
-        });
-        assert(false);
+            let BN = web3.utils.BN;
+            let smallerAmount = minimumContribution.sub(new BN('1'));
+            await campaign.contribute({
+                value: smallerAmount,
+                from: accounts[1]
+            });
+            assert.fail("Possible to contribute with less than minimum contribution");
         } catch (err) {
-        assert(err);
+            // TODO Catch and compare the error message to 'The contribution amount is lower than the minimum accepted.' 
+            assert(err);
         }
     });
 
     it('allows a manager to make a payment request', async () => {
-        await campaign.methods
-        .createRequest('Buy batteries', '100', accounts[1])
-        .send({
-            from: accounts[0],
-            gas: '1000000'
-        });
-        const request = await campaign.methods.requests(0).call();
-        assert.equal('Buy batteries', request.description);
-    });
-
-    it('processes requests', async () => {
-        await campaign.methods.contribute().send({
-        from: accounts[0],
-        value: web3.utils.toWei('10', 'ether')
-        });
-
-        await campaign.methods
-        .createRequest("A", web3.utils.toWei('5', 'ether'), accounts[1])
-        .send({
-            from: accounts[0],
-            gas: '1000000'
-        });
-
-        await campaign.methods.approveRequest(0).send({
-        from: accounts[0],
-        gas: '1000000'
-        });
-
-        await campaign.methods.finalizeRequest(0).send({
-        from: accounts[0],
-        gas: '1000000'
-        });
-
-        let balance = await web3.eth.getBalance(accounts[1]); // in Wei
-        balance = web3.utils.fromWei(balance, 'ether');
-        balance = parseFloat(balance);
-        console.log(balance);
-        assert(balance > 104);
+        await campaign.createRequest('Buy batteries', '1000', accounts[2], { from: accounts[0] });
+        const request = await campaign.requests(0); // or requests()[0]
+        assert.strictEqual(request.description, 'Buy batteries', 'Correct description');
+        assert.strictEqual(request.value.toString(), '1000', 'Correct value');
+        assert.strictEqual(request.recipient, accounts[2], 'Correct recipient');
 
     });
-    });
 
-    beforeEach(async () => {
-    accounts = await web3.eth.getAccounts();
+    // TODO Add try creating a request when not the manager
+    // TODO Continue writing tests
+    // it('processes requests', async () => {
+    //     await campaign.methods.contribute().send({
+    //     from: accounts[0],
+    //     value: web3.utils.toWei('10', 'ether')
+    //     });
 
-    factory = await new web3.eth.Contract(JSON.parse(compiledFactory.interface))
-        .deploy({data: compiledFactory.bytecode})
-        .send({from: accounts[0], gas: '1000000'});
+    //     await campaign.methods
+    //     .createRequest("A", web3.utils.toWei('5', 'ether'), accounts[1])
+    //     .send({
+    //         from: accounts[0],
+    //         gas: '1000000'
+    //     });
 
-    await factory.methods.createCampaign('100').send({
-        from: accounts[0],
-        gas: '1000000'
-    });
+    //     await campaign.methods.approveRequest(0).send({
+    //     from: accounts[0],
+    //     gas: '1000000'
+    //     });
 
-    // Optional syntax:
-    // [campaignAddress] = await factory.methods.getDeployedCampaigns().call();
-    const addresses = await factory.methods.getDeployedCampaigns().call();
-    campaignAddress = addresses[0];
+    //     await campaign.methods.finalizeRequest(0).send({
+    //     from: accounts[0],
+    //     gas: '1000000'
+    //     });
 
-    campaign = await new web3.eth.Contract(
-        JSON.parse(compiledCampaign.interface),
-        campaignAddress
-    );
+    //     let balance = await web3.eth.getBalance(accounts[1]); // in Wei
+    //     balance = web3.utils.fromWei(balance, 'ether');
+    //     balance = parseFloat(balance);
+    //     console.log(balance);
+    //     assert(balance > 104);
+
+    // });
 });

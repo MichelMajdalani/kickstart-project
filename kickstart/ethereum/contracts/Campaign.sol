@@ -10,12 +10,15 @@ contract CampaignFactory {
     /// @notice List of deployed campaigns
     Campaign[] public deployedCampaigns;
 
+    event NewContractCreated(address contractAddress);
+
     /// @notice Creates a new campaign and adds it to the list of deployed campaigns
     /// @dev msg.sender is passed as an argument to preserve the correct sender of the transaction
     /// @param minimum Minimal contribution you can make to this campaign
     function createCampaign(uint256 minimum) public {
         Campaign newCampaign = new Campaign(minimum, msg.sender);
         deployedCampaigns.push(newCampaign);
+        emit NewContractCreated(address(newCampaign));
     }
 
     /// @notice Returns the list of deployed campaigns
@@ -82,7 +85,7 @@ contract Campaign {
     // TODO Make your voting power proportional to the amount you contributed
     /// @notice Donate for a campaign
     function contribute() public payable {
-        require(msg.value > minimumContribution, 'The contribution amount is lower than the minimum accepted.');
+        require(msg.value >= minimumContribution, 'The contribution amount is lower than the minimum accepted.');
 
         /// Avoid increasing the approversCount for the same donor
         if(!approvers[msg.sender]) {
