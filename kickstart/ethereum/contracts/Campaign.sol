@@ -61,7 +61,9 @@ contract Campaign {
     /// @dev Design pattern used with mapping to account for the mapping's length without iteration
     uint256 public approversCount;
     /// @dev Withdrawal design pattern
-    mapping(address => uint256) pendingWithdrawals;
+    mapping(address => uint256) public pendingWithdrawals;
+    /// @dev Counter that follows life of contract balance
+    uint256 public balance;
 
     event NewContribution(uint256 amount);
     event NewContributor(address contributor);
@@ -94,6 +96,7 @@ contract Campaign {
         }
 
         approvers[msg.sender] = true;
+        balance += msg.value;
         emit NewContribution(msg.value);
     }
 
@@ -131,13 +134,29 @@ contract Campaign {
     function finalizeRequest(uint256 index) public restricted {
         Request storage request = requests[index];
 
-        require(request.approvalCount > (approversCount/2), 'At least 50% of the approvers must accept the request for it to pass.');
+        require(request.value < balance, "Attempt to finalize an infeasible request");
+        require(request.approvalCount > (approversCount/2), 'More than 50% of the approvers must accept the request for it to pass.');
         require(!request.complete, 'Request has already been completed.');
 
-        // SafeMath is not needed since we only add the amount once.
+        balance -= request.value;
+        // TODO Add Safe Math
         pendingWithdrawals[request.recipient] += request.value;
         request.complete = true;
         emit SubmittedRequestToRecipient(request.recipient, request.value);
+    }
+
+    // TODO This feature might be deleted
+    /// @notice Cancel finalization of request
+    /// @param index Request's id
+    function cancelRequest(uint256 index) public restricted {
+        Request storage request = requests[index];
+
+        require(request.complete, 'Request is not complete.');
+
+        request.complete = false;
+        balance += request.value;
+        pendingWithdrawals[request.recipient] -= request.value;
+        // TODO reset mapping to default configuration (to be able to revote)
     }
 
     /// @notice Allow a request's recipient to withdraw value
