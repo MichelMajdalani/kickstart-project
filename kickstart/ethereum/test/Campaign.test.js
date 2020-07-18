@@ -7,16 +7,17 @@ contract("Campaign", accounts => {
     // Start from a fresh state
     let campaign;
     let index;
+    // TODO change to a parameter or find a better way of doing this
+    let requestValue;
 
     let manager = accounts[0];
     let minimumContribution = web3.utils.toWei('1', 'nano');
     let recipient = accounts[2];
-    // TODO change to a parameter or find a better way of doing this
-    let requestValue = minimumContribution;
 
     beforeEach(async () => {
         campaign = await Campaign.new(minimumContribution, manager);
         index=0;
+        requestValue = minimumContribution;
     })
 
     // Utility functions
@@ -27,16 +28,12 @@ contract("Campaign", accounts => {
     }
 
     function approvePaymentRequest() {
-        console.log('Here!');
         const index = createPaymentRequest();
-        contributorList = [accounts[1], accounts[2], accounts[3]];
-
-        for(contributor of contributorList) {
-            campaign.contribute({ value: minimumContribution, from: contributor})
-                .then(() => {});
-            campaign.approveRequest(index, {from: contributor}).then(() => {});
-
-        }
+        campaign.contribute({ value: minimumContribution, from: accounts[1]}).then(() => {}).catch((err) => {console.log(err)});
+        campaign.approveRequest(index, {from: accounts[1]}).then(() => {}).catch((err) => {console.log(err)});
+        campaign.contribute({ value: minimumContribution, from: accounts[2]}).then(() => {}).catch((err) => {console.log(err)});
+        campaign.approveRequest(index, {from: accounts[2]}).then(() => {}).catch((err) => {console.log(err)});
+        campaign.contribute({ value: minimumContribution, from: accounts[3]}).then(() => {}).catch((err) => {console.log(err)});
         return index;
     }
 
@@ -168,16 +165,12 @@ contract("Campaign", accounts => {
         }
     });
 
-    // it('test approve request', async () => {
-    //     approvePaymentRequest();
-    // });
-
     // it('finalize request', async () => {
     //     const index = approvePaymentRequest();
     //     let balance = await campaign.balance();
     //     // TODO Not hardcode to 3
     //     let totalContributions = new BN(minimumContribution).mul(new BN('3'));
-    //     assert.strictEqual(balance.toNumber(), totalContributions.toNumber(), "balance accounted properly");
+    //     assert.strictEqual(balance.toString(), totalContributions.toString(), "balance accounted properly");
 
     //     const tx = await campaign.finalizeRequest(index, {from: manager});
         
@@ -199,30 +192,30 @@ contract("Campaign", accounts => {
 
     // });
 
-    // it('restrict finalize request when not a manager', async () => {
-    //     const index = approvePaymentRequest();
-    //     try {
-    //         await campaign.finalizeRequest(index, {from: recipient});
-    //         assert.fail("Can finalize a request when you are not the manager");
-    //     } catch (err) {
-    //         assert.include(err.message, "You do not have manager privileges.", "Modifier set in finalize request");
-    //     }
-    // });
+    it('restrict finalize request when not a manager', async () => {
+        const index = approvePaymentRequest();
+        try {
+            await campaign.finalizeRequest(index, {from: recipient});
+            assert.fail("Can finalize a request when you are not the manager");
+        } catch (err) {
+            assert.include(err.message, "You do not have manager privileges.", "Modifier set in finalize request");
+        }
+    });
 
-    // it('finalize request when funds are not enough', async () => {
-    //     // Modify request value to exceed contributions
-    //     requestValue = new BN(minimumContribution).mul(new BN('10'));
-    //     let oldWithdrawalAmount = await campaign.pendingWithdrawals(recipient);
-    //     approvePaymentRequest();
-    //     try {
-    //         await campaign.finalizeRequest(index, {from: manager});
-    //         assert.fail("Can finalize a request when you have no money for it");
-    //     } catch (err) {
-    //         let newWithdrawalAmount = await campaign.pendingWithdrawals(recipient);
-    //         assert.strictEqual(oldWithdrawalAmount, newWithdrawalAmount, "No withdrawal added");
-    //         assert.include(err.message, "Attempt to finalize an infeasible request", "No money creation");
-    //     }
-    // });
+    it('finalize request when funds are not enough', async () => {
+        // Modify request value to exceed contributions
+        requestValue = new BN(minimumContribution).mul(new BN('10'));
+        let oldWithdrawalAmount = await campaign.pendingWithdrawals(recipient);
+        const index = approvePaymentRequest();
+        try {
+            await campaign.finalizeRequest(index, {from: manager});
+            assert.fail("Can finalize a request when you have no money for it");
+        } catch (err) {
+            let newWithdrawalAmount = await campaign.pendingWithdrawals(recipient);
+            assert.strictEqual(oldWithdrawalAmount.toNumber(), newWithdrawalAmount.toNumber(), "No withdrawal added");
+            assert.include(err.message, "Attempt to finalize an infeasible request", "No money creation");
+        }
+    });
 
     // it('duplicate finalize request', async () => {
     //     const index = approvePaymentRequest();
@@ -235,17 +228,17 @@ contract("Campaign", accounts => {
     //     }
     // });
 
-    // it('finalize request when the majority did not accept yet', async () => {
-    //     const index = approvePaymentRequest();
-    //     // Add a contributor that doesn't approve
-    //     await campaign.contribute({ value: minimumContribution, from: accounts[4]});
-    //     try {
-    //         await campaign.finalizeRequest(index, {from: manager});
-    //         assert.fail("Can finalize a request twice");
-    //     } catch (err) {
-    //         assert.include(err.message, 'More than 50% of the approvers must accept the request for it to pass.', "Preserve democracy");
-    //     }
-    // });
+    it('finalize request when the majority did not accept yet', async () => {
+        const index = approvePaymentRequest();
+        // Add a contributor that doesn't approve
+        await campaign.contribute({ value: minimumContribution, from: accounts[4]});
+        try {
+            await campaign.finalizeRequest(index, {from: manager});
+            assert.fail("Can finalize a request without majority");
+        } catch (err) {
+            assert.include(err.message, 'More than 50% of the approvers must accept the request for it to pass.', "Preserve democracy");
+        }
+    });
 
     // it('withdraw', async () => {
     //     // TODO
