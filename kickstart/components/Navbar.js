@@ -1,4 +1,3 @@
-import React from 'react'
 import Link from 'next/link'
 
 export default class NavigationBar extends React.Component {
