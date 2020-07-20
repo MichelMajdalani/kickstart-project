@@ -14,7 +14,6 @@ export default class Home extends React.Component {
   async componentDidMount() {
     let web3 = await getWeb3();
     let factory = new web3.eth.Contract(abi, networks["4"]["address"]);
-    // await factory.methods.createCampaign(web3.utils.toWei('1', 'nano')).send({from: web3.currentProvider.selectedAddress});
     this.setState({
       addresses: await factory.methods.getDeployedCampaigns().call()
     });
@@ -27,7 +26,6 @@ export default class Home extends React.Component {
     return (
       <div>
         <Layout>
-          <div className="container mt-3">
             <h3>Open Campaign</h3>
             <Link href="campaigns/new">
               <a>
@@ -40,9 +38,8 @@ export default class Home extends React.Component {
               </a>
             </Link>
             
-              {listCampaigns}
+            {listCampaigns}
             
-          </div>
         </Layout>
       </div>
     )
