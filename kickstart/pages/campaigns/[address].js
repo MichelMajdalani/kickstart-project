@@ -1,105 +1,110 @@
+import { useState, useEffect } from 'react';
 import Layout from '../../components/Layout'
 import getWeb3 from '../../ethereum/web3'
 import { abi } from '../../ethereum/build/contracts/Campaign.json'
 import { abi as factory_abi, networks as factory_networks} from '../../ethereum/build/contracts/CampaignFactory.json'
-import { withRouter } from 'next/router'
+import { useRouter } from 'next/router'
 import {SuccessButton, LoadingButton} from '../../components/FormButtons'
-import { Container, Row, Col, Form, Card } from 'react-bootstrap'
+import { Container, Row, Col, Form, Card, InputGroup } from 'react-bootstrap'
 
-class CampaignShow extends React.Component {
-    constructor(props) {
-        super(props);
-        // TODO State vs props
-        this.state = {
-            manager: '',
-            balance: '',
-            minimumContribution: '',
-            requestsCount: '',
-            approversCount: '',
-            address: ''
-        }
-    }
+export default function CampaignShow() {
+    const router = useRouter();
+    const { address } = router.query;
 
-    async componentDidMount() {
-        const {router} = this.props;
-        console.log(this.props.address);
-        // console.log(router);
-        const {address} = router.query;
+    const [ manager, setManager ] = useState('');
+    const [ balance, setBalance ] = useState('');
+    const [ minimumContribution, setMinimumContribution ] = useState('');
+    const [ requestsCount, setRequestsCount ] = useState('');
+    const [ approversCount, setApproversCount ] = useState('');
+    
+    // TODO Change to custom hook when refactoring
+    async function retrieveSummary() {
+        // TODO two lines below in their own function
         let web3 = await getWeb3();
+        
         let campaign = new web3.eth.Contract(abi, address);
         // TODO Store the address or wait for it to be loaded.
-        let summary = await campaign.methods.getSummary().call();
-        this.setState({
+        const summary = await campaign.methods.getSummary().call();
+        return {
             manager: summary[4],
             balance: web3.utils.fromWei(summary[1], 'ether'),
             minimumContribution: summary[0],
             requestsCount: summary[2],
             approversCount: summary[3],
-            address: address
-        });
+        }
     }
 
-    render() {
-        const items = [
-            {
-              title: this.state.manager,
-              subtitle: 'Address of Manager',
-              text: 'The manager created this campaign and can create requests to withdraw money.',
-            },
-            {
-              title: this.state.minimumContribution,
-              subtitle: 'Minimum Contribution (wei)',
-              text: 'You must contribute at least this much wei to become an approver.',
-            },
-            {
-              title: this.state.requestsCount,
-              subtitle: 'Number of Requests',
-              text: 'A request tries to withdraw money from the contract. Requests must be approved by approvers.',
-            },
-            {
-              title: this.state.approversCount,
-              subtitle: 'Number of Approvers',
-              text: 'Number of people who have already donated to this campaign.',
-            },
-            {
-              title: this.state.balance,
-              subtitle: 'Campaign Balance (ether)',
-              text: 'The balance is how much money this campaign has left to spend.',
-            },
-        ];
-        const listItems = items.map((card) =>
-            <div className="col my-2" key={card.subtitle}>
-                <CampaignCard title={card.title} subtitle={card.subtitle} text={card.text}/>
-            </div>
-        );
-        return (   
-            <Layout>
-                <Container fluid className="mt-3">
-                    <h3>Campaign Show</h3>
-                    <Row>
-                        <Col sm={5} sm={{order: 'last'}}>
-                            <ContributeForm minimumContribution={this.state.minimumContribution} address={this.state.address}/>
-                        </Col>
-                        <Col sm={7} sm={{order: 'first'}}>
-                            <Container fluid className="p-0">
-                                {/* row row-cols-2 */}
-                                <Row>
-                                    <Col sm={6}>
-                                        {listItems}
-                                    </Col>
-                                </Row>
-                            </Container>
-                        </Col>
-                    </Row>
-                </Container>
-            </Layout>
-        );
-    }
+    useEffect(() => {
+        if(address !== undefined) {
+            retrieveSummary()
+            .then((res) => {
+                setManager(res.manager);
+                setBalance(res.balance);
+                setMinimumContribution(res.minimumContribution);
+                setRequestsCount(res.requestsCount);
+                setApproversCount(res.approversCount);
+            })
+        }
+
+    }, [address]);
+
+    const items = [
+        {
+            title: manager,
+            subtitle: 'Address of Manager',
+            text: 'The manager created this campaign and can create requests to withdraw money.',
+        },
+        {
+            title: minimumContribution,
+            subtitle: 'Minimum Contribution (wei)',
+            text: 'You must contribute at least this much wei to become an approver.',
+        },
+        {
+            title: requestsCount,
+            subtitle: 'Number of Requests',
+            text: 'A request tries to withdraw money from the contract. Requests must be approved by approvers.',
+        },
+        {
+            title: approversCount,
+            subtitle: 'Number of Approvers',
+            text: 'Number of people who have already donated to this campaign.',
+        },
+        {
+            title: balance,
+            subtitle: 'Campaign Balance (ether)',
+            text: 'The balance is how much money this campaign has left to spend.',
+        },
+    ];
+    const listItems = items.map((card) =>
+        <Col sm={6} className="my-2" key={card.subtitle}>
+            <CampaignCard title={card.title} subtitle={card.subtitle} text={card.text}/>
+        </Col>
+    );
+    return (   
+        <Layout>
+            <Container fluid className="mt-3">
+                <h3>Campaign Show</h3>
+                <Row>
+                    <Col sm={5} sm={{order: 'last'}}>
+                        <ContributeForm minimumContribution={minimumContribution} address={address}/>
+                    </Col>
+                    <Col sm={7} sm={{order: 'first'}}>
+                        <Container fluid className="p-0">
+                            {/* row row-cols-2 */}
+                            <Row>
+                                {listItems}
+                            </Row>
+                        </Container>
+                    </Col>
+                </Row>
+            </Container>
+        </Layout>
+    );
 }
 
 function CampaignCard(props) {
     return (
-        <Card>
+        <Card className="h-100">
             <Card.Body>
                 <Card.Title>{props.title}</Card.Title>
                 <Card.Subtitle className="mb-2 text-muted">{props.subtitle}</Card.Subtitle>
@@ -135,7 +140,7 @@ class ContributeForm extends React.Component {
         // TODO Catch error if web3 is undefined
         let web3 = await getWeb3();
         let campaign = new web3.eth.Contract(abi, this.props.address);
-        campaign.methods.contribute().send({from: web3.currentProvider.selectedAddress, value: this.state.amount})
+        campaign.methods.contribute().send({from: web3.currentProvider.selectedAddress, value: amount})
         .then(() => {
             this.setState({
                 errorMessage: '',
@@ -162,24 +167,24 @@ class ContributeForm extends React.Component {
             button = <InitialButton />
         }
         return (
-            <form onSubmit={this.handleSubmit}>
-                <div className="form-group">
-                    <label htmlFor="contribution">Amount to Contribute</label>
-                    <div className="input-group">
+            <Form onSubmit={this.handleSubmit}>
+                <Form.Group>
+                    <Form.Label>Amount to Contribute</Form.Label>
+                    <InputGroup>
                         {/* TODO Change so that it accepts decimals of ether or posibility to change unit */}
-                        <input type="number" className="form-control" id="contribution" min={this.props.minimumContribution} step="1" onChange={this.handleChange} required/>
-                        <div className="input-group-append">
-                            <span className="input-group-text">Wei</span>
-                        </div>
+                        <Form.Control type="number" id="contribution" min={this.props.minimumContribution} step="1" onChange={this.handleChange} required />
+                        <InputGroup.Append>
+                            <InputGroup.Text>Wei</InputGroup.Text>
+                        </InputGroup.Append>
                         {/* TODO Add custom validation */}
-                    </div>
-                    
+                    </InputGroup>                   
                     {/* TODO Change from wei to be able to specify in any currency */}
-                    <small id="help" className="form-text text-muted">Please enter the contribute amount in Wei.</small>
-                </div>
+                    <Form.Text className="text-muted">Please enter the contribute amount in Wei.</Form.Text>
+                </Form.Group>
+                {/* TODO Form.Text */}
                 <p className="text-danger">{this.state.errorMessage}</p>
                 {button}
-            </form>
+            </Form>
         );
     }
     
@@ -233,5 +238,3 @@ function InitialButton() {
 //         }
 //     }
 // }
-
-export default withRouter(CampaignShow);
