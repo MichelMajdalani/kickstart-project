@@ -24,6 +24,12 @@ function LoadingButton() {
     );
 }
 
+function InitialButton(props) {
+    return (
+        <Button type="submit" className="btn btn-primary">{props.title}</Button>
+    );
+}
+
 export {
-    SuccessButton, LoadingButton
+    SuccessButton, LoadingButton, InitialButton
 }
