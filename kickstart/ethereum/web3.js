@@ -4,7 +4,7 @@ import Web3 from 'web3'
 /**
  * Supports only Metamask for now
  */
-export default async function () {
+export default async function getProvider() {
     const provider = await detectEthereumProvider();
     if (provider) {
         console.log('Ethereum successfully detected!');
