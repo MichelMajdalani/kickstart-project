@@ -2,6 +2,7 @@ import Layout from '../../components/Layout'
 import getWeb3 from '../../ethereum/web3'
 import {abi, networks} from '../../ethereum/build/contracts/CampaignFactory.json'
 import {SuccessButton, LoadingButton} from '../../components/FormButtons'
+import { Container, Form, InputGroup, Button } from 'react-bootstrap'
 
 export default class CampaignNew extends React.Component {
     constructor(props) {
@@ -55,29 +56,28 @@ export default class CampaignNew extends React.Component {
         }
         return (
             <Layout>
-                <div className="container mt-3">
+                <Container className="mt-3">
                     <h3>Create a Campaign</h3>
-                    <form onSubmit={this.handleSubmit}>
-                        <div className="form-group">
-                            <label htmlFor="minimumContribution">Minimum Contribution</label>
-                            <div className="input-group">
-                                <input type="number" className="form-control" id="minimumContribution" min="0" step="1" onChange={this.handleChange} required/>
-                                <div className="input-group-append">
+                    <Form onSubmit={this.handleSubmit}>
+                        <Form.Group>
+                            <Form.Label>Minimum Contribution</Form.Label>
+                            <InputGroup>
+                                <Form.Control type="number" id="minimumContribution" min="0" step="1" onChange={this.handleChange} required/>
+                                <InputGroup.Append>
                                     <span className="input-group-text">Wei</span>
-                                </div>
+                                </InputGroup.Append>
                                 {/* TODO Add custom validation */}
                                 {/* <div className="invalid-feedback">
                                     Please provide a positive integer.
                                 </div> */}
-                            </div>
-                            
-                            {/* TODO Change from wei to be able to specify in any currency */}
-                            <small id="help" className="form-text text-muted">Please enter the minimum amount to contribute in Wei.</small>
-                        </div>
-                        <p className="text-danger">{this.state.errorMessage}</p>
-                        {button}
-                    </form>
-                </div>
+                                {/* TODO Change from wei to be able to specify in any currency */}
+                            </InputGroup>
+                            <Form.Text id="help" className="form-text text-muted">Please enter the minimum amount to contribute in Wei.</Form.Text>
+                            <p className="text-danger">{this.state.errorMessage}</p>
+                            {button}
+                        </Form.Group>  
+                    </Form>
+                </Container>
             </Layout>
         )
     }
@@ -85,6 +85,6 @@ export default class CampaignNew extends React.Component {
 
 function InitialButton() {
     return (
-    <button type="submit" className="btn btn-primary">Create!</button>
+    <Button type="submit" variant="primary">Create!</Button>
     );
 }

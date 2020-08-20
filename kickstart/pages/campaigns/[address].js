@@ -1,7 +1,10 @@
 import Layout from '../../components/Layout'
 import getWeb3 from '../../ethereum/web3'
 import { abi } from '../../ethereum/build/contracts/Campaign.json'
+import { abi as factory_abi, networks as factory_networks} from '../../ethereum/build/contracts/CampaignFactory.json'
 import { withRouter } from 'next/router'
+import {SuccessButton, LoadingButton} from '../../components/FormButtons'
+import { Container, Row, Col, Form, Card } from 'react-bootstrap'
 
 class CampaignShow extends React.Component {
     constructor(props) {
@@ -13,14 +16,14 @@ class CampaignShow extends React.Component {
             minimumContribution: '',
             requestsCount: '',
             approversCount: '',
-            errorMessage: '',
-            loading: false,
-            done: false
+            address: ''
         }
     }
 
     async componentDidMount() {
         const {router} = this.props;
+        console.log(this.props.address);
+        // console.log(router);
         const {address} = router.query;
         let web3 = await getWeb3();
         let campaign = new web3.eth.Contract(abi, address);
@@ -31,10 +34,10 @@ class CampaignShow extends React.Component {
             balance: web3.utils.fromWei(summary[1], 'ether'),
             minimumContribution: summary[0],
             requestsCount: summary[2],
-            approversCount: summary[3]
+            approversCount: summary[3],
+            address: address
         });
     }
-
 
     render() {
         const items = [
@@ -69,31 +72,26 @@ class CampaignShow extends React.Component {
                 <CampaignCard title={card.title} subtitle={card.subtitle} text={card.text}/>
             </div>
         );
-        let buttonStyle;
-        if(this.state.done) {
-            buttonStyle = <SuccessButton />
-        } else if(this.state.loading) {
-            buttonStyle = <LoadingButton />
-        } else {
-            buttonStyle = <InitialButton />
-        }
         return (   
             <Layout>
-                <div className="container-fluid mt-3">
+                <Container fluid className="mt-3">
                     <h3>Campaign Show</h3>
-                    <div className="row">
-                        <div className="col-sm-5 order-sm-last">
-                            <ContributeForm minimumContribution={this.state.minimumContribution} errorMessage={this.state.errorMessage} button={buttonStyle}/>
-                        </div> 
-                        <div className="col-sm-7 order-sm-first">
-                            <div className="container-fluid p-0">
-                                <div className="row row-cols-2">
-                                    {listItems}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <Row>
+                        <Col sm={5} sm={{order: 'last'}}>
+                            <ContributeForm minimumContribution={this.state.minimumContribution} address={this.state.address}/>
+                        </Col>
+                        <Col sm={7} sm={{order: 'first'}}>
+                            <Container fluid className="p-0">
+                                {/* row row-cols-2 */}
+                                <Row>
+                                    <Col sm={6}>
+                                        {listItems}
+                                    </Col>
+                                </Row>
+                            </Container>
+                        </Col>
+                    </Row>
+                </Container>
             </Layout>
         );
     }
@@ -101,47 +99,90 @@ class CampaignShow extends React.Component {
 
 function CampaignCard(props) {
     return (
-    <div className="card">
-        <div className="card-body">
-            <h5 className="card-title">{props.title}</h5>
-            <h6 className="card-subtitle mb-2 text-muted">{props.subtitle}</h6>
-            <p className="card-text">{props.text}</p>
-        </div>
-    </div>
+        <Card>
+            <Card.Body>
+                <Card.Title>{props.title}</Card.Title>
+                <Card.Subtitle className="mb-2 text-muted">{props.subtitle}</Card.Subtitle>
+                <Card.Text>{props.text}</Card.Text>
+            </Card.Body>
+        </Card>
     );
 }
 
 // Refactor this component with the one in new.js
-function ContributeForm(props) {
+class ContributeForm extends React.Component {
 
-    function handleChange(event) {
-        console.log(event.target.value)
+    constructor(props) {
+        super(props);
+        this.state = {
+            amount: '',
+            errorMessage: '',
+            loading: false,
+            done: false
+        }
+
+        this.handleChange = this.handleChange.bind(this);
+        this.handleSubmit = this.handleSubmit.bind(this);
     }
 
-    function handleSubmit() {
-        console.log("Yes! " + this);
+    handleChange(event) { 
+        this.setState({amount: event.target.value});
     }
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <div className="form-group">
-                <label htmlFor="contribution">Amount to Contribute</label>
-                <div className="input-group">
-                    {/* TODO Change so that it accepts decimals of ether or posibility to change unit */}
-                    <input type="number" className="form-control" id="contribution" min={props.minimumContribution} step="1" onChange={handleChange} required/>
-                    <div className="input-group-append">
-                        <span className="input-group-text">Wei</span>
+    async handleSubmit(event) {
+        event.preventDefault();
+        this.setState({loading: true});
+        // TODO Catch error if web3 is undefined
+        let web3 = await getWeb3();
+        let campaign = new web3.eth.Contract(abi, this.props.address);
+        campaign.methods.contribute().send({from: web3.currentProvider.selectedAddress, value: this.state.amount})
+        .then(() => {
+            this.setState({
+                errorMessage: '',
+                loading:false,
+                done:true
+            })
+        })
+        .catch((error) => {
+            this.setState({
+                errorMessage: error.message,
+                loading: false,
+                done: false
+            });
+        });
+    }
+
+    render() {
+        let button;
+        if(this.state.done) {
+            button = <SuccessButton />
+        } else if(this.state.loading) {
+            button = <LoadingButton />
+        } else {
+            button = <InitialButton />
+        }
+        return (
+            <form onSubmit={this.handleSubmit}>
+                <div className="form-group">
+                    <label htmlFor="contribution">Amount to Contribute</label>
+                    <div className="input-group">
+                        {/* TODO Change so that it accepts decimals of ether or posibility to change unit */}
+                        <input type="number" className="form-control" id="contribution" min={this.props.minimumContribution} step="1" onChange={this.handleChange} required/>
+                        <div className="input-group-append">
+                            <span className="input-group-text">Wei</span>
+                        </div>
+                        {/* TODO Add custom validation */}
                     </div>
-                    {/* TODO Add custom validation */}
+                    
+                    {/* TODO Change from wei to be able to specify in any currency */}
+                    <small id="help" className="form-text text-muted">Please enter the contribute amount in Wei.</small>
                 </div>
-                
-                {/* TODO Change from wei to be able to specify in any currency */}
-                <small id="help" className="form-text text-muted">Please enter the contribute amount in Wei.</small>
-            </div>
-            <p className="text-danger">{props.errorMessage}</p>
-            {props.button}
-        </form>
-    );
+                <p className="text-danger">{this.state.errorMessage}</p>
+                {button}
+            </form>
+        );
+    }
+    
 }
 
 function InitialButton() {
@@ -149,5 +190,48 @@ function InitialButton() {
         <button type="submit" className="btn btn-primary">Contribute!</button>
     );
 }
+
+// function getAllAddresses() {
+//     getWeb3()
+//     .then((res) => {
+//         let web3 = res;
+//         const factory = new web3.eth.Contract(factory_abi, factory_networks["4"]["address"]);
+//         return factory;       
+//     })
+//     .then((factory) => {
+//         factory.methods.getDeployedCampaigns().call()
+//         .then((result) => {
+//             let addresses = result;
+//             return addresses.map((address) => {
+//                 return {
+//                     params: {
+//                         address: address.toString()
+//                     }
+//                 }
+//             }
+//           );
+//         });
+//     });
+    
+// }
+
+// export function getStaticPaths() {
+//     let paths = getAllAddresses();
+//     console.log(paths);
+//     return {
+//         paths,
+//         fallback: false
+//     }
+// }
+
+
+// export async function getStaticProps({ params }) {
+//     const addressData = params.address;
+//     return {
+//         props: {
+//             addressData
+//         }
+//     }
+// }
 
 export default withRouter(CampaignShow);
