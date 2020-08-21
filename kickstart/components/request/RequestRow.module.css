@@ -1,0 +1,9 @@
+/* TODO try reusing text-muted from bootstrap */
+.disable-row {
+    background-color: #ececec;
+    color: #b9b9b9;
+}
+
+.disable-row:hover {
+    background-color: #ececec !important;
+}

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import Layout from '../../components/Layout'
-import getWeb3 from '../../ethereum/web3'
-import { abi } from '../../ethereum/build/contracts/Campaign.json'
-import { abi as factory_abi, networks as factory_networks} from '../../ethereum/build/contracts/CampaignFactory.json'
+import Layout from '../../../components/Layout'
+import getWeb3 from '../../../utils/web3'
+import { abi } from '../../../ethereum/build/contracts/Campaign.json'
 import { useRouter } from 'next/router'
-import { SuccessButton, LoadingButton, InitialButton } from '../../components/form/FormButtons'
-import { Container, Row, Col, Form, Card, InputGroup } from 'react-bootstrap'
-import ContributeForm from '../../components/form/ContributeForm';
-import setCards from '../../constants/card-info';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap'
+import ContributeForm from '../../../components/form/ContributeForm'
+import setCards from '../../../constants/card-info'
+import Link from 'next/link'
 
 // TODO Add automatic refresh when you contribute
 export default function CampaignShow() {
@@ -63,15 +62,23 @@ export default function CampaignShow() {
             <Container fluid className="mt-3">
                 <h3>Campaign Show</h3>
                 <Row>
-                    <Col sm={5} sm={{order: 'last'}}>
+                    <Col md={5} md={{order: 'last'}}>
                         <ContributeForm minimumContribution={minimumContribution} address={address}/>
                     </Col>
-                    <Col sm={7} sm={{order: 'first'}}>
+                    <Col md={7} md={{order: 'first'}}>
                         <Container fluid className="p-0">
                             {/* row row-cols-2 */}
                             <Row>
                                 {listItems}
                             </Row>
+                            <Row>
+                                <Col>
+                                    <Link href="/campaigns/[address]/requests" as={`/campaigns/${address}/requests`}>
+                                        <Button className="primary">View Requests</Button>
+                                    </Link>
+                                </Col>
+                            </Row>
+                            {/* TODO Add margin for footer everywhere */}
                         </Container>
                     </Col>
                 </Row>

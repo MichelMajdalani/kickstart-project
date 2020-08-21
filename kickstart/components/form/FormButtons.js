@@ -26,7 +26,7 @@ function LoadingButton() {
 
 function InitialButton(props) {
     return (
-        <Button type="submit" className="btn btn-primary">{props.title}</Button>
+        <Button type="submit" variant="primary">{props.title}</Button>
     );
 }
 

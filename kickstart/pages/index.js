@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout'
 import Link from 'next/link'
-import getWeb3 from '../ethereum/web3'
+import getWeb3 from '../utils/web3'
 import {abi, networks} from '../ethereum/build/contracts/CampaignFactory.json'
 import { Container, Row, Col, Button, Card } from 'react-bootstrap'
 
+// TODO Fix error when in dark mode
 export default function Home() {
   
   const [ addresses, setAddresses ] = useState([]);

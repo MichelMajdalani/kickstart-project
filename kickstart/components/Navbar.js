@@ -22,9 +22,15 @@ export default class NavigationBar extends React.Component {
                 <Navbar.Collapse id="navbar-collapse">
                     <Nav className="mr-auto">
                     {/* Add link and bold (current) */}
-                        <Nav.Link>Home</Nav.Link>
-                        <Nav.Link>About</Nav.Link>
-                        <Nav.Link>Contact Us</Nav.Link>
+                        <Link href="/" passHref>
+                            <Nav.Link>Home</Nav.Link>
+                        </Link>
+                        <Link href="/about" passHref>
+                            <Nav.Link>About</Nav.Link>
+                        </Link>
+                        <Link href="/contactus" passHref>
+                            <Nav.Link>Contact Us</Nav.Link>
+                        </Link>
                     </Nav>
                 </Navbar.Collapse>
             </Navbar>

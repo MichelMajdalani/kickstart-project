@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import getWeb3 from '../../ethereum/web3'
+import getWeb3 from '../../utils/web3'
 import { abi } from '../../ethereum/build/contracts/Campaign.json'
 import { SuccessButton, LoadingButton, InitialButton } from '../../components/form/FormButtons'
 import { Form, InputGroup } from 'react-bootstrap'
